@@ -67,19 +67,12 @@
           messageEl.className = isError ? 'error' : 'hint';
         }
 
-        var raw =
-          window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0] ||
-          '';
-        var segment;
-        try {
-          segment = decodeURIComponent(raw);
-        } catch (_) {
-          segment = raw;
-        }
+        var params = new URLSearchParams(window.location.search);
+        var segment = (params.get('v') || '').trim();
 
         if (!segment) {
           showMessage(
-            'Open this page with a path after the domain, e.g. https://media.sanboard.ch/your-media-id',
+            'Add a video id in the query string, e.g. https://media.sanboard.ch/?v=your-media-id',
             true
           );
           return;
@@ -104,7 +97,7 @@
                 default:
                   hls.destroy();
                   showMessage(
-                    'Playback failed. Check that the path id exists and S3 CORS allows this origin.',
+                    'Playback failed. Check that the id in ?v= exists and S3 CORS allows this origin.',
                     true
                   );
                   break;
