@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sanboard Media Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #0f1114;
+        color: #e8eaed;
+        font-family: system-ui, sans-serif;
+        padding: 1rem;
+      }
+      .wrap {
+        width: 100%;
+        max-width: 960px;
+      }
+      video {
+        width: 100%;
+        max-height: 80vh;
+        background: #000;
+        border-radius: 8px;
+      }
+      .error,
+      .hint {
+        margin-top: 1rem;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+      }
+      .error {
+        background: #3d1515;
+        color: #ffb4b4;
+      }
+      .hint {
+        background: #1a2330;
+        color: #9cb4d4;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <video id="video" controls playsinline></video>
+      <div id="message" class="hint" hidden></div>
+    </div>
+    <script>
+      (function () {
+        var BASE =
+          'https://dev-sanboard-cdk-s3-eu-central-2.s3.eu-central-2.amazonaws.com/media';
+
+        var video = document.getElementById('video');
+        var messageEl = document.getElementById('message');
+
+        function showMessage(text, isError) {
+          messageEl.hidden = false;
+          messageEl.textContent = text;
+          messageEl.className = isError ? 'error' : 'hint';
+        }
+
+        var raw =
+          window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0] ||
+          '';
+        var segment;
+        try {
+          segment = decodeURIComponent(raw);
+        } catch (_) {
+          segment = raw;
+        }
+
+        if (!segment) {
+          showMessage(
+            'Open this page with a path after the domain, e.g. https://media.sanboard.ch/your-media-id',
+            true
+          );
+          return;
+        }
+
+        var manifestUrl =
+          BASE + '/' + encodeURIComponent(segment) + '/index.m3u8';
+
+        if (window.Hls && window.Hls.isSupported()) {
+          var hls = new window.Hls({ enableWorker: true });
+          hls.loadSource(manifestUrl);
+          hls.attachMedia(video);
+          hls.on(window.Hls.Events.ERROR, function (_, data) {
+            if (data.fatal) {
+              switch (data.type) {
+                case window.Hls.ErrorTypes.NETWORK_ERROR:
+                  hls.startLoad();
+                  break;
+                case window.Hls.ErrorTypes.MEDIA_ERROR:
+                  hls.recoverMediaError();
+                  break;
+                default:
+                  hls.destroy();
+                  showMessage(
+                    'Playback failed. Check that the path id exists and S3 CORS allows this origin.',
+                    true
+                  );
+                  break;
+              }
+            }
+          });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = manifestUrl;
+        } else {
+          showMessage(
+            'This browser cannot play HLS. Try Safari or a current Chrome/Firefox.',
+            true
+          );
+        }
+      })();
+    </script>
+  </body>
+</html>
